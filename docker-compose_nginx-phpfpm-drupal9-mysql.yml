@@ -1,0 +1,77 @@
+# nginx + php:fpm + drupal9.0.0 + mysql
+version: "3.8"
+networks: 
+    network:
+        driver: bridge
+volumes:
+    drupal-modules:
+    drupal-profiles:
+    drupal-themes:
+    drupal-sites:
+    www-root:
+    mysql-root:
+services: 
+    store:
+        build: 
+            context: ./alpine
+            dockerfile: Dockerfile
+        image: project:store
+        hostname: store_server
+        volumes:
+            #- drupal-modules:/data/drupal-modules
+            #- drupal-profiles:/data/drupal-profiles
+            #- drupal-themes:/data/drupal-themes
+            #- drupal-sites:/data/drupal-sites
+            - www-root:/data/www-root
+            - mysql-root:/data/mysql-root
+            - ./share:/data/share
+        networks:
+            - network
+    phpfpm-drupal9:
+        build: 
+            context: ./drupal/9.0.0
+            dockerfile: phpfpm.Dockerfile
+        image: project:phpfpm-drupal9
+        hostname: php_server
+        restart: always
+        volumes:
+            - ./php/php-fpm.conf:/usr/local/etc/php-fpm.d/www.conf
+            - ./php/php.ini-production:/usr/local/etc/php/php.ini
+            - www-root:/var/www/html
+        networks:
+            - network
+        depends_on: 
+            - mysql
+        links: 
+            - mysql:mysql_server
+    nginx:
+        build: 
+            context: ./nginx
+            dockerfile: Dockerfile
+        image: project:nginx
+        hostname: nginx_server
+        ports:
+            - 8080:80
+        volumes:
+            - www-root:/usr/share/nginx/html:ro
+        networks:
+            - network
+        depends_on: 
+            - phpfpm-drupal9
+        links: 
+            - phpfpm-drupal9:php_server
+    mysql: 
+        image: mysql
+        hostname: mysql_server
+        command: --default-authentication-plugin=mysql_native_password
+        environment: 
+            MYSQL_ROOT_PASSWORD: mysqlA369478767
+            MYSQL_RANDOM_ROOT_PASSWORD: "yes"
+            MYSQL_DATABASE: drupal
+            MYSQL_USER: drupal
+            MYSQL_PASSWORD: drupal
+        restart: always
+        volumes:
+            - mysql-root:/var/lib/mysql
+        networks:
+            - network
