@@ -1,4 +1,4 @@
-# drupal:8.9.0-apache + mysql
+# nginx + drupal:9.0.0-fpm + mysql
 version: "3.8"
 networks: 
     network:
@@ -26,14 +26,12 @@ services:
             - mysql-root:/data/mysql-root
         networks:
             - network
-    drupal8-apache:
+    drupal9-fpm:
         build: 
-            context: ./drupal/8.9.0
-            dockerfile: apache.Dockerfile
-        image: project:drupal8-apache
+            context: ./drupal/9.0.0
+            dockerfile: fpm.Dockerfile
+        image: project:drupal9-fpm
         hostname: drupal_server
-        ports:
-            - 8080:80
         restart: always
         volumes:
             - www-root:/var/www/html
@@ -43,12 +41,28 @@ services:
             - mysql
         links: 
             - mysql:mysql_server
+    nginx:
+        build: 
+            context: ./nginx
+            dockerfile: Dockerfile
+        image: project:nginx
+        hostname: nginx_server
+        ports:
+            - 8080:80
+        volumes:
+            - www-root:/usr/share/nginx/html:ro
+        networks:
+            - network
+        depends_on: 
+            - drupal9-fpm
+        links: 
+            - drupal9-fpm:php_server
     mysql: 
         image: mysql
         hostname: mysql_server
         command: --default-authentication-plugin=mysql_native_password
         environment: 
-            MYSQL_ROOT_PASSWORD: mysqlA369478767
+            MYSQL_ROOT_PASSWORD: 123456
             MYSQL_RANDOM_ROOT_PASSWORD: "yes"
             MYSQL_DATABASE: drupal
             MYSQL_USER: drupal
